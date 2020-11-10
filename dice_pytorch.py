@@ -20,22 +20,27 @@ class DiceCNN(nn.Module):
         # output 6
         k1, k2, k3 = 3, 3, 3
         s1, s2, s3 = 1,1,1
+        self.n_features = 1 * 480 * 480
         self.network = nn.Sequential(
-            nn.Conv2d(1, 50, kernel_size=k1,stride=s1),
-            nn.MaxPool2d(50),
+            nn.Conv2d(1, 32, kernel_size=k1,stride=s1),
+            #nn.MaxPool2d(50),
             nn.ReLU(),
-            #nn.Conv2d(50, 50, kernel_size=k2,stride=s2),
+            nn.Conv2d(32, 32, kernel_size=k2,stride=s2),
             #nn.MaxPool2d(50),
             #nn.ReLU(),
-            nn.Linear(480*480*1, 200),
+        )
+        self.out = nn.Sequential(
+            nn.Linear(7*7*32, 200),
             nn.ReLU(),
             nn.Linear(200,6),
             nn.Sigmoid()
         )
-
     def forward(self,x):
-        print("x shape",x.size())
-        return self.network(x)
+        print("x", x.size())
+        x = self.network(x)
+        x = x.view(x.size(0),-1)
+        print("x", x.size())
+        return self.out(x)
 
 
 
@@ -57,8 +62,8 @@ def check_accuracy(loader, model):
             y = y1[0].to(device = device, dtype=torch.float)
 
             scores = model(x)
-            predictions = torch.tensor([1.0 if i >= 0.5 else 0.0 for i in scores]).to(device)
-            num_correct += (predictions == y[0]).sum()
+            predictions = torch.round(scores).to(device)
+            num_correct += (predictions == y).sum()
             num_samples += predictions.size(0)
     return f"{float(num_correct)/float(num_samples)*100:.2f}"
 
