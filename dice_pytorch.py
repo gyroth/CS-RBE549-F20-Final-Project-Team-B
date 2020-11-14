@@ -22,7 +22,7 @@ class DiceCNN(nn.Module):
         # output 6
         k1, k2, k3 = 8, 3, 3
         s1, s2, s3 = 2,1,1
-        self.n_features = 32*233*233
+        self.n_features = 1*233*233
         self.network = nn.Sequential(
             nn.Conv2d(1, 32, kernel_size=k1,stride=s1),
             #nn.MaxPool2d(50),
@@ -30,7 +30,7 @@ class DiceCNN(nn.Module):
             nn.Conv2d(32, 32, kernel_size=k2,stride=s2),
             #nn.MaxPool2d(50),
             nn.ReLU(),
-            nn.Conv2d(32, 32, kernel_size=k2,stride=s2),
+            nn.Conv2d(32, 1, kernel_size=k2,stride=s2),
 
         )
         self.out = nn.Sequential(
@@ -47,11 +47,13 @@ class DiceCNN(nn.Module):
         #print("x", x.size())
         return self.out(x)
 
-def save_best_model():
-    return
+def save_best_model(model, save_path):
+    torch.save(model.state_dict, save_path)
+    print("Saving new best model")
 
-def load_model():
-    return
+def load_model(model,load_path):
+    model.load_state_dict(torch.load(load_path))
+    return model
 
 # TODO
 def plot_results():
@@ -62,9 +64,6 @@ if __name__ == "__main__":
                                     transforms.ToTensor()])
     # Load dataset
     traindataset = DiceDataset.DiceDataset(root="dice/train",transform=None, preprocess=True)
-    split_ratio = 0.7
-    trainlen = len(traindataset)*split_ratio
-    validlen = len(traindataset)*(1-split_ratio)
     train_set, validation_set = torch.utils.data.random_split(traindataset,[9999, 4285])
     validdataset = DiceDataset.DiceDataset(root="dice/valid",transform=transform, preprocess=True)
 
@@ -76,28 +75,59 @@ if __name__ == "__main__":
     shuffle = True
     pin_memory = True
     num_workers = 1
+
     # Create dataloader
     train_loader = DataLoader(dataset=train_set, shuffle = shuffle, batch_size = batch_size, num_workers=num_workers, pin_memory=pin_memory)
     validation_loader = DataLoader(dataset=validation_set, shuffle = shuffle, batch_size = batch_size, num_workers=num_workers, pin_memory=pin_memory)
 
     # Define model
     model = DiceCNN().to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr= learning_rate)
+    optimizer = torch.optim.Adam(model.parameters(), lr = learning_rate)
     criterion = nn.CrossEntropyLoss()
 
     # Train model
     for epoch in range(epochs):
+            print("epoch", epoch)
+            training_loss = 0.0
+            val_loss = 0.0
+            val_acc = 0
+            correct_preds = 0
+            best_acc = 0
+            validation = 0.0
+            total =0
+            model.train()
             for i,data in enumerate(train_loader,0):
-                model.train()
                 imgs, labels = data
                 if torch.cuda.is_available():
-                    imgs = imgs.to(device)
+                    #print("imgs",imgs.shape)
+                    #print("labels",labels.shape)
+                    imgs = imgs.to(device, dtype=torch.float)
                     labels = labels.to(device, dtype=torch.int64)
-                optimizer.zero_grad()
                 outputs = model(imgs.float())
-                print(outputs.shape)
-                print(labels.shape)
-
+                optimizer.zero_grad()
                 loss = criterion(outputs, labels)
                 loss.backward()
                 optimizer.step()
+                training_loss += loss.item()
+
+            print("Validation")
+            with torch.no_grad():
+                model.eval()
+                for i,data in enumerate(validation_loader,0):
+                    imgs, labels = data
+                    if torch.cuda.is_available():
+                        imgs = imgs.to(device, dtype=torch.float)
+                        labels = labels.to(device, dtype=torch.int64)
+                    outputs = model(imgs)
+
+                    val_loss = criterion(outputs,labels)
+                    _, index = torch.max(outputs,1)
+                    total += labels.size(0)
+                    correct_preds += (index == labels).sum().item()
+
+                    validation += val_loss.item()
+
+                val_acc = 100 * (correct_preds / total)
+                print('Validation Accuracy is: {:.2f}%'.format(val_acc))
+
+
