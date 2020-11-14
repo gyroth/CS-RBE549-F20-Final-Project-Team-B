@@ -13,60 +13,49 @@ import numpy as np
 import DiceDataset
 
 device = ("cuda" if torch.cuda.is_available() else "cpu")
+torch.cuda.empty_cache()
+num_dices = 6
 
 class DiceCNN(nn.Module):
     def __init__(self):
         super(DiceCNN,self).__init__()
         # output 6
-        k1, k2, k3 = 3, 3, 3
-        s1, s2, s3 = 1,1,1
-        self.n_features = 1 * 480 * 480
+        k1, k2, k3 = 8, 3, 3
+        s1, s2, s3 = 2,1,1
+        self.n_features = 32*233*233
         self.network = nn.Sequential(
             nn.Conv2d(1, 32, kernel_size=k1,stride=s1),
             #nn.MaxPool2d(50),
             nn.ReLU(),
             nn.Conv2d(32, 32, kernel_size=k2,stride=s2),
             #nn.MaxPool2d(50),
-            #nn.ReLU(),
+            nn.ReLU(),
+            nn.Conv2d(32, 32, kernel_size=k2,stride=s2),
+
         )
         self.out = nn.Sequential(
-            nn.Linear(7*7*32, 200),
+            nn.Flatten(),
+            nn.Linear(self.n_features, 200),
             nn.ReLU(),
             nn.Linear(200,6),
             nn.Sigmoid()
         )
     def forward(self,x):
-        print("x", x.size())
+        #print("x", x.size())
         x = self.network(x)
-        x = x.view(x.size(0),-1)
-        print("x", x.size())
+        #x = x.view(x.shape[0],-1)
+        #print("x", x.size())
         return self.out(x)
 
+def save_best_model():
+    return
 
+def load_model():
+    return
 
-
-def check_accuracy(loader, model):
-    if loader == train_loader:
-        print("Checking accuracy on training data")
-    else:
-        print("Checking accuracy on validation data")
-
-    num_correct = 0
-    num_samples = 0
-    model.eval()
-
-    with torch.no_grad():
-        #print("loader", loadertraindataset = DiceDataset.DiceDataset(root="dice/train",transform=transform, preprocess=True))
-        for (x, y1) in loader:
-            x = x.to(device = device, dtype=torch.float)
-            y = y1[0].to(device = device, dtype=torch.float)
-
-            scores = model(x)
-            predictions = torch.round(scores).to(device)
-            num_correct += (predictions == y).sum()
-            num_samples += predictions.size(0)
-    return f"{float(num_correct)/float(num_samples)*100:.2f}"
-
+# TODO
+def plot_results():
+    return
 
 if __name__ == "__main__":
     transform = transforms.Compose([transforms.Resize((100,100)),
@@ -97,18 +86,18 @@ if __name__ == "__main__":
     criterion = nn.CrossEntropyLoss()
 
     # Train model
-    model.train()
     for epoch in range(epochs):
-        loop  = tqdm.tqdm(train_loader, total = len(train_loader), leave = True)
-        if epoch % 2 == 0:
-            loop.set_postfix(val_acc = check_accuracy(validation_loader, model))
-            for imgs, labels in loop:
-                imgs = imgs.to(device)
-                labels = labels.to(device)
-                outputs = model(imgs)
-                loss = criterion(outputs, labels)
+            for i,data in enumerate(train_loader,0):
+                model.train()
+                imgs, labels = data
+                if torch.cuda.is_available():
+                    imgs = imgs.to(device)
+                    labels = labels.to(device, dtype=torch.int64)
                 optimizer.zero_grad()
+                outputs = model(imgs.float())
+                print(outputs.shape)
+                print(labels.shape)
+
+                loss = criterion(outputs, labels)
                 loss.backward()
                 optimizer.step()
-                loop.set_description(f"Epoch [{epoch}/{epochs}]")
-                loop.set_postfix(loss = loss.item())
