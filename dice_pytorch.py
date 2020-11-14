@@ -146,7 +146,7 @@ if __name__ == "__main__":
                 val_acc = 100 * (correct_preds / total)
                 print('Validation Accuracy is: {:.2f}%'.format(val_acc))
                 # Saving models
-                if(best_acc > best_val):
+                if(best_acc > val_acc):
                     save_best_model(model,"results/bestmodel.pth")
                 if(epoch % save_iteration == 0):
                     save_best_model(model, "results/lastsavedmodel.pth")
