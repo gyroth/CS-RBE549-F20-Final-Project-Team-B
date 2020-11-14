@@ -11,6 +11,9 @@ import cv2
 import numpy as np
 # Project imports
 import DiceDataset
+import matplotlib
+import matplotlib.pyplot as plt
+matplotlib.use('Agg')
 
 device = ("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
@@ -56,8 +59,13 @@ def load_model(model,load_path):
     return model
 
 # TODO
-def plot_results():
-    return
+def plot_results(train_loss, val_loss):
+    plt.title("Train vs Validation Loss")
+    plt.xlabel("Epoch")
+    plt.ylabel("CrossEntropyLoss")
+    plt.plot(train_loss)
+    plt.plot(val_loss)
+    plt.savefig("results/loss.png")
 
 if __name__ == "__main__":
     transform = transforms.Compose([transforms.Resize((100,100)),
@@ -76,6 +84,10 @@ if __name__ == "__main__":
     pin_memory = True
     num_workers = 1
 
+    # Saving and plotting
+    save_iteration = 10
+    plot_iteration = 5
+
     # Create dataloader
     train_loader = DataLoader(dataset=train_set, shuffle = shuffle, batch_size = batch_size, num_workers=num_workers, pin_memory=pin_memory)
     validation_loader = DataLoader(dataset=validation_set, shuffle = shuffle, batch_size = batch_size, num_workers=num_workers, pin_memory=pin_memory)
@@ -85,17 +97,19 @@ if __name__ == "__main__":
     optimizer = torch.optim.Adam(model.parameters(), lr = learning_rate)
     criterion = nn.CrossEntropyLoss()
 
+    best_acc = 0
+    val_loss_array = []
+    train_loss_array = []
     # Train model
     for epoch in range(epochs):
-            print("epoch", epoch)
             training_loss = 0.0
             val_loss = 0.0
             val_acc = 0
             correct_preds = 0
-            best_acc = 0
             validation = 0.0
             total =0
             model.train()
+            print("Epoch % 2d, training_loss % 5.2f val_loss % 5.2f, best_acc % 5.2f" % (epoch,training_loss, val_loss, best_acc))
             for i,data in enumerate(train_loader,0):
                 imgs, labels = data
                 if torch.cuda.is_available():
@@ -110,7 +124,6 @@ if __name__ == "__main__":
                 optimizer.step()
                 training_loss += loss.item()
 
-            print("Validation")
             with torch.no_grad():
                 model.eval()
                 for i,data in enumerate(validation_loader,0):
@@ -127,7 +140,18 @@ if __name__ == "__main__":
 
                     validation += val_loss.item()
 
+                # Record results after evalutation
+                train_loss_array.append(training_loss)
+                val_loss_array.append(validation)
                 val_acc = 100 * (correct_preds / total)
                 print('Validation Accuracy is: {:.2f}%'.format(val_acc))
+                # Saving models
+                if(best_acc > best_val):
+                    save_best_model(model,"results/bestmodel.pth")
+                if(epoch % save_iteration == 0):
+                    save_best_model(model, "results/lastsavedmodel.pth")
+                # Plot
+                if( epoch % plot_iteration == 0):
+                    plot_results(train_loss_array,val_loss_array)
 
 
