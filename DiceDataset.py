@@ -21,6 +21,7 @@ class DiceDataset(Dataset):
         self.transform = transform
         self.preprocess = preprocess
         self.dice = [4,6,8,10,12,20]
+
     def __len__(self):
         return len(self.image_paths)
 
@@ -30,12 +31,12 @@ class DiceDataset(Dataset):
         img = self.preprocessImage(img_path) if self.preprocess else cv2.imread(img_path)
         img2 = self.transform(torch.from_numpy(img)) if self.transform else torch.from_numpy(img)
         img3 = img2.unsqueeze(0)
-        # I am not one hot encoding, I am assigning each category an index. I.e. 4 sided dice is label 1, 6 sided dice is converted to label 2, etc.
+        # I am not one hot encoding, I am assigning each category an index. I.e. 4 sided dice is label 0, 6 sided dice is converted to label 1, etc.
         dice_index = self.dice.index(float(dice_type))
-        #print(dice_index)
         return (img3, torch.tensor(float(dice_index)))
 
     # Insert any image preprocessing here
+    # Images are size 480x480
     def preprocessImage(self,image_path):
         img = cv2.imread(image_path)
         img = cv2.Canny(img, 30, 150)

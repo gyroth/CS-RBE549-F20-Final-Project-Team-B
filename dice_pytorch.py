@@ -1,3 +1,6 @@
+import os
+import time
+import pickle
 import torchvision.transforms as transforms
 import tqdm
 import os
@@ -9,32 +12,36 @@ from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms, utils
 import cv2
 import numpy as np
-# Project imports
-import DiceDataset
 import matplotlib
 import matplotlib.pyplot as plt
-matplotlib.use('Agg')
+import DiceDataset
 
+matplotlib.use('Agg')
 device = ("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
-num_dices = 6
 
+# Neural network used for dice
 class DiceCNN(nn.Module):
     def __init__(self):
         super(DiceCNN,self).__init__()
         # output 6
-        k1, k2, k3 = 8, 3, 3
-        s1, s2, s3 = 2,1,1
-        self.n_features = 1*233*233
+        k1, k2, k3 = 3, 3, 3 # kernal size
+        s1, s2, s3 = 1,1,1 # stride size
+        self.n_features = 16*58*58
         self.network = nn.Sequential(
             nn.Conv2d(1, 32, kernel_size=k1,stride=s1),
-            #nn.MaxPool2d(50),
             nn.ReLU(),
+            nn.BatchNorm2d(32),
+            nn.MaxPool2d((2,2)),
+            #nn.MaxPool2d(50),
             nn.Conv2d(32, 32, kernel_size=k2,stride=s2),
-            #nn.MaxPool2d(50),
             nn.ReLU(),
-            nn.Conv2d(32, 1, kernel_size=k2,stride=s2),
-
+            nn.BatchNorm2d(32),
+            nn.MaxPool2d((2,2)),
+            nn.Conv2d(32, 16, kernel_size=k2,stride=s2),
+            nn.ReLU(),
+            nn.BatchNorm2d(16),
+            nn.MaxPool2d((2,2))
         )
         self.out = nn.Sequential(
             nn.Flatten(),
@@ -44,13 +51,22 @@ class DiceCNN(nn.Module):
             nn.Sigmoid()
         )
     def forward(self,x):
-        #print("x", x.size())
+#        print("x", x.size())
         x = self.network(x)
         #x = x.view(x.shape[0],-1)
-        #print("x", x.size())
+#        print(x.view(x.shape[0],-1).size())
+#        print("x", x.size())
         return self.out(x)
 
-def save_best_model(model, save_path):
+# TODO Download data
+def downloadData():
+    return
+
+# TODO move training from main to trainModel
+def trainModel():
+    return
+
+def save_model(model, save_path):
     torch.save(model.state_dict, save_path)
     print("Saving new best model")
 
@@ -58,16 +74,28 @@ def load_model(model,load_path):
     model.load_state_dict(torch.load(load_path))
     return model
 
-# TODO
 def plot_results(train_loss, val_loss):
+    figure = plt.figure(1)
     plt.title("Train vs Validation Loss")
     plt.xlabel("Epoch")
     plt.ylabel("CrossEntropyLoss")
     plt.plot(train_loss)
     plt.plot(val_loss)
-    plt.savefig("results/loss.png")
+    figure.savefig("results/loss.png")
 
 if __name__ == "__main__":
+    if not os.path.isdir("results"):
+        print("Creating results folder")
+        os.mkdir("results/")
+
+    if not os.path.isdir("dice/"):
+        print("Warning, dice dataset(\"dice/\")cannot be found. \n ")
+        userresponse = input("Would you like to download? [Y,n]")
+        if(userresponse == "Y" or userresponse == "y"):
+            print("Download function not implemented yet. Please download yourself. https://www.kaggle.com/ucffool/dice-d4-d6-d8-d10-d12-d20-images/notebooks")
+    else:
+        print("Found dice dataset. Now preparing...")
+
     transform = transforms.Compose([transforms.Resize((100,100)),
                                     transforms.ToTensor()])
     # Load dataset
@@ -77,12 +105,12 @@ if __name__ == "__main__":
 
     # Hyperparameters
     epochs = 100
-    learning_rate = 0.07
+    learning_rate = 7e-5
     train_CNN = False
     batch_size = 32
     shuffle = True
     pin_memory = True
-    num_workers = 1
+    num_workers = 10
 
     # Saving and plotting
     save_iteration = 10
@@ -107,9 +135,9 @@ if __name__ == "__main__":
             val_acc = 0
             correct_preds = 0
             validation = 0.0
-            total =0
+            total = 0
             model.train()
-            print("Epoch % 2d, training_loss % 5.2f val_loss % 5.2f, best_acc % 5.2f" % (epoch,training_loss, val_loss, best_acc))
+            print("Epoch ",epoch)
             for i,data in enumerate(train_loader,0):
                 imgs, labels = data
                 if torch.cuda.is_available():
@@ -124,6 +152,7 @@ if __name__ == "__main__":
                 optimizer.step()
                 training_loss += loss.item()
 
+            # Run on validation set
             with torch.no_grad():
                 model.eval()
                 for i,data in enumerate(validation_loader,0):
@@ -140,18 +169,19 @@ if __name__ == "__main__":
 
                     validation += val_loss.item()
 
-                # Record results after evalutation
-                train_loss_array.append(training_loss)
-                val_loss_array.append(validation)
-                val_acc = 100 * (correct_preds / total)
-                print('Validation Accuracy is: {:.2f}%'.format(val_acc))
-                # Saving models
-                if(best_acc > val_acc):
-                    save_best_model(model,"results/bestmodel.pth")
-                if(epoch % save_iteration == 0):
-                    save_best_model(model, "results/lastsavedmodel.pth")
-                # Plot
-                if( epoch % plot_iteration == 0):
-                    plot_results(train_loss_array,val_loss_array)
+            # Record results after evalutation
+            train_loss_array.append(training_loss)
+            val_loss_array.append(validation)
+            val_acc = 100 * (correct_preds / total)
+            # Saving models
+            if(best_acc < val_acc):
+                best_acc = val_acc
+                save_model(model,"results/bestmodel.pth")
+            if(epoch % save_iteration == 0):
+                save_model(model, "results/lastsavedmodel.pth")
+            # Plot
+            if( epoch % plot_iteration == 0):
+                plot_results(train_loss_array,val_loss_array)
 
+            print("val_acc %5.2f training_loss % 5.2f val_loss % 5.2f, best_acc % 5.2f" % (val_acc,training_loss, val_loss, best_acc))
 
