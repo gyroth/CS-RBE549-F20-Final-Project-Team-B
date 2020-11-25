@@ -17,7 +17,7 @@ def laplaceEdge(imgIn):
     box = cv.boxFilter(med, -1, (3, 3))
     filtered_image = cv.Laplacian(box, ksize=3, ddepth=ddepth)
     abs_grad = cv.convertScaleAbs(filtered_image)
-    cv.imshow('canny edges', abs_grad)
+    cv.imshow('Laplace edges', abs_grad)
     cv.waitKey(0)
     return abs_grad
 
@@ -32,6 +32,8 @@ def sobelEdge(imgIn):
     abs_grad_x = cv.convertScaleAbs(grad_x)
     abs_grad_y = cv.convertScaleAbs(grad_y)
     grad = cv.addWeighted(abs_grad_x, 0.5, abs_grad_y, 0.5, 0)
+    cv.imshow('Sobel edges', grad)
+    cv.waitKey(0)
     return grad
 
 def findLargestArea(contourSet):
@@ -74,7 +76,7 @@ def cannyEdges(imgIn):
 #Thresholding attempt
 def threshold(imgIn):
     gray = cv.cvtColor(imgIn, cv.COLOR_BGR2GRAY)
-    mat, thresh = cv.threshold(gray, 180, 255, cv.THRESH_TOZERO_INV)
+    mat, thresh = cv.threshold(gray, 150, 255, cv.THRESH_TOZERO_INV)
     cv.imshow('threshold', thresh)
     cv.waitKey(0)
     return thresh
@@ -90,9 +92,9 @@ def segmentation(imgIn):
 
 # lapImg = laplaceEdge(img)
 # sobel = sobelEdge(img)
-canny = cannyEdges(img)
-# threshImg = threshold(img)
-contours = segmentation(canny)
+# canny = cannyEdges(img)
+threshImg = threshold(img)
+contours = segmentation(threshImg)
 # Print the number of contours
 # print(contours)
 print('Numbers of contours found=' + str(len(contours)))
