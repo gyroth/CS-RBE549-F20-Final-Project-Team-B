@@ -100,8 +100,8 @@ if __name__ == "__main__":
                                     transforms.ToTensor()])
     # Load dataset
     traindataset = DiceDataset.DiceDataset(root="dice/train",transform=None, preprocess=True)
-    train_set, validation_set = torch.utils.data.random_split(traindataset,[9999, 4285])
-    validdataset = DiceDataset.DiceDataset(root="dice/valid",transform=transform, preprocess=True)
+    #train_set, validation_set = torch.utils.data.random_split(traindataset,[9999, 4285])
+    validdataset = DiceDataset.DiceDataset(root="dice/valid",transform=None, preprocess=True)
 
     # Hyperparameters
     epochs = 100
@@ -117,8 +117,8 @@ if __name__ == "__main__":
     plot_iteration = 5
 
     # Create dataloader
-    train_loader = DataLoader(dataset=train_set, shuffle = shuffle, batch_size = batch_size, num_workers=num_workers, pin_memory=pin_memory)
-    validation_loader = DataLoader(dataset=validation_set, shuffle = shuffle, batch_size = batch_size, num_workers=num_workers, pin_memory=pin_memory)
+    train_loader = DataLoader(dataset=traindataset, shuffle = shuffle, batch_size = batch_size, num_workers=num_workers, pin_memory=pin_memory)
+    validation_loader = DataLoader(dataset=validdataset, shuffle = shuffle, batch_size = batch_size, num_workers=num_workers, pin_memory=pin_memory)
 
     # Define model
     model = DiceCNN().to(device)
