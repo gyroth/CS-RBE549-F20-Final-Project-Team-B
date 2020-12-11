@@ -1,0 +1,9 @@
+classes = 6
+
+train = train.txt
+
+valid = test.txt
+
+names = classes.names
+
+backup = backup/

@@ -1,0 +1,4 @@
+Testing my neural network results
+
+Test 1:
+	Conv2d(1,32), Conv2d(32,32), Conv2d(32,16), Linear(200), Linear(200,6). kernels: 16,8,3 strides: 4,2,1. batch_size: 32, learning_rate: 7e-5
