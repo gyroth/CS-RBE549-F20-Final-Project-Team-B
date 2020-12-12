@@ -4,7 +4,7 @@ import math
 from matplotlib import pyplot as plt
 import sys
 
-img = cv.imread("d4_angle_color060.jpg")
+img = cv.imread("d6_45angle_0009.jpg")
 if img is None:
     sys.exit("No such image")
 ddepth = cv.CV_64F
@@ -63,7 +63,11 @@ def findLargestArea(contourSet):
 
 def cannyEdges(imgIn):
     # gray = cv.cvtColor(imgIn, cv.COLOR_BGR2GRAY)
+    cv.imshow('Original', imgIn)
+    cv.waitKey(0)
     gaussian = cv.GaussianBlur(imgIn, (3, 3), 3)
+    cv.imshow('Gaussian Filter', gaussian)
+    cv.waitKey(0)
     med = cv.medianBlur(gaussian, 5)
     box = cv.boxFilter(med, -1, (3, 3))
     # Use Canny Edge ops to find edges
@@ -92,9 +96,9 @@ def segmentation(imgIn):
 
 # lapImg = laplaceEdge(img)
 # sobel = sobelEdge(img)
-# canny = cannyEdges(img)
-threshImg = threshold(img)
-contours = segmentation(threshImg)
+canny = cannyEdges(img)
+#threshImg = threshold(img)
+contours = segmentation(canny)
 # Print the number of contours
 # print(contours)
 print('Numbers of contours found=' + str(len(contours)))
